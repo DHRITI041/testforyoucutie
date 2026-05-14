@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE/NEET Mock Test Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- App Navigation (Global) -->
+    <nav class="global-nav">
+        <div class="nav-left">
+            <div class="logo" onclick="window.location.href='index.html'" style="cursor: pointer;">
+                <span class="logo-icon">T</span>
+                <span class="logo-text">TestKart</span>
+            </div>
+        </div>
+        <div class="nav-right">
+        </div>
+    </nav>
+
+    <!-- Home Container (Landing Page) -->
+    <div id="home-container" class="active-view">
+        <div class="hero-section">
+            <div class="badge">
+                <span class="dot"></span> Free for everyone, everywhere
+            </div>
+            <h1 class="hero-title">Practice JEE & NEET <br><span class="highlight-italic">without the paywall.</span></h1>
+            <p class="hero-subtitle">Timed mock tests anyone can take. A removable timer for relaxed study, an open admin panel so you can build and edit exams — no code required.</p>
+            
+            <div class="hero-buttons">
+                <button id="btn-home-browse" class="btn-orange" onclick="window.location.href='browse.html'">Browse exams <i class="fa-solid fa-arrow-right"></i></button>
+                <button id="btn-home-create" class="btn-dark-outline" onclick="window.location.href='browse.html?create=true'"><i class="fa-solid fa-plus"></i> Create an exam</button>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <i class="fa-solid fa-globe feature-icon"></i>
+                    <h4>Open access</h4>
+                    <p>No signup, no fees.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-regular fa-clock feature-icon"></i>
+                    <h4>Timer your way</h4>
+                    <p>Pause or hide it anytime.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-book-open feature-icon"></i>
+                    <h4>Editable</h4>
+                    <p>Anyone can add questions.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

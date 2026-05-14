@@ -1,0 +1,372 @@
+// Exam App State
+let questions = [];
+let currentQuestionIndex = 0;
+let timeRemaining = 0;
+let timerInterval = null;
+let userResponses = {}; 
+let subjects = [];
+let currentSubject = "All";
+
+const STATES = {
+    NOT_VISITED: 'not-visited',
+    NOT_ANSWERED: 'not-answered',
+    ANSWERED: 'answered',
+    MARKED: 'marked',
+    ANSWERED_MARKED: 'answered-marked'
+};
+
+const els = {
+    examContainer: document.getElementById('exam-container'),
+    resultContainer: document.getElementById('result-container'),
+    loading: document.getElementById('loading-overlay'),
+    loadingText: document.getElementById('loading-text'),
+    timerContainer: document.getElementById('timer-container'),
+    timeLeft: document.getElementById('time-left'),
+    qNum: document.getElementById('current-q-num'),
+    totalNum: document.getElementById('total-q-num'),
+    qSubject: document.getElementById('q-subject'),
+    qText: document.getElementById('q-text'),
+    optionsContainer: document.getElementById('options-container'),
+    btnMarkReview: document.getElementById('btn-mark-review'),
+    btnClear: document.getElementById('btn-clear'),
+    btnSaveNext: document.getElementById('btn-save-next'),
+    btnSubmit: document.getElementById('btn-submit-exam'),
+    subjectTabs: document.getElementById('subject-tabs'),
+    paletteGrid: document.getElementById('palette-grid'),
+    currentSubjectLabel: document.getElementById('current-subject-label'),
+    headerTitle: document.getElementById('header-title'),
+    markCorrect: document.getElementById('mark-correct'),
+    markIncorrect: document.getElementById('mark-incorrect'),
+
+    btnOpenAdmin: document.getElementById('btn-open-admin'),
+    adminModal: document.getElementById('admin-modal'),
+    btnCloseAdmin: document.getElementById('btn-close-admin'),
+    btnSaveQuestion: document.getElementById('btn-save-question'),
+    btnExportQuestions: document.getElementById('btn-export-questions'),
+    addQSubject: document.getElementById('add-q-subject'),
+    addQText: document.getElementById('add-q-text'),
+    addQOpt0: document.getElementById('add-q-opt0'),
+    addQOpt1: document.getElementById('add-q-opt1'),
+    addQOpt2: document.getElementById('add-q-opt2'),
+    addQOpt3: document.getElementById('add-q-opt3'),
+    addQCorrect: document.getElementById('add-q-correct')
+};
+
+function switchView(viewId) {
+    document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active-view'));
+    document.getElementById(viewId).classList.add('active-view');
+    window.scrollTo(0, 0);
+}
+
+function initExamApp() {
+    // Load config override
+    const override = localStorage.getItem('exam_config_override');
+    if (override) {
+        Object.assign(EXAM_CONFIG, JSON.parse(override));
+    }
+
+    // Load student details
+    const studentJson = localStorage.getItem('student_details');
+    if (studentJson) {
+        const details = JSON.parse(studentJson);
+        document.getElementById('student-name-display').textContent = details.name;
+        document.getElementById('student-roll-display').textContent = 'Roll: ' + details.roll;
+        document.getElementById('student-avatar').src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(details.name) + '&background=2563eb&color=fff';
+    }
+
+    // Admin Events
+    els.btnOpenAdmin.addEventListener('click', () => els.adminModal.classList.remove('hidden'));
+    els.btnCloseAdmin.addEventListener('click', () => els.adminModal.classList.add('hidden'));
+    els.btnSaveQuestion.addEventListener('click', () => {
+        const subject = els.addQSubject.value.trim();
+        const text = els.addQText.value.trim();
+        const opt0 = els.addQOpt0.value.trim();
+        const opt1 = els.addQOpt1.value.trim();
+        const opt2 = els.addQOpt2.value.trim();
+        const opt3 = els.addQOpt3.value.trim();
+        const correct = parseInt(els.addQCorrect.value);
+
+        if (!text || !opt0 || !opt1 || !opt2 || !opt3) {
+            alert("Please fill out the question and all options!");
+            return;
+        }
+
+        const newQuestion = {
+            id: Date.now(),
+            subject: subject || "General",
+            question: text,
+            options: [opt0, opt1, opt2, opt3],
+            correctOption: correct
+        };
+
+        const localData = localStorage.getItem('custom_questions');
+        let customQuestions = [];
+        if (localData) {
+            try { customQuestions = JSON.parse(localData); } catch(e){}
+        }
+        customQuestions.push(newQuestion);
+        localStorage.setItem('custom_questions', JSON.stringify(customQuestions));
+
+        const newGlobalIndex = questions.length;
+        newQuestion.globalIndex = newGlobalIndex;
+        questions.push(newQuestion);
+        userResponses[newGlobalIndex] = { selectedOption: null, state: STATES.NOT_VISITED };
+
+        if (!subjects.includes(newQuestion.subject)) {
+            subjects.push(newQuestion.subject);
+            renderSubjectTabs();
+        }
+
+        els.totalNum.textContent = questions.length;
+        renderQuestionPalette();
+        
+        if (questions.length === 1) {
+            loadQuestion(0);
+            if (EXAM_CONFIG.showTimer && !timerInterval) startTimer();
+        }
+        alert("Question added successfully!");
+        els.adminModal.classList.add('hidden');
+        els.addQText.value = ''; els.addQOpt0.value = ''; els.addQOpt1.value = ''; els.addQOpt2.value = ''; els.addQOpt3.value = '';
+    });
+    
+    els.btnExportQuestions.addEventListener('click', () => {
+        const exportData = JSON.stringify(questions, null, 4);
+        const blob = new Blob(['const FALLBACK_QUESTIONS = \n' + exportData + ';'], {type: 'application/javascript'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'questions.js';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    });
+
+    const isBlank = localStorage.getItem('pending_exam_blank') === 'true';
+    startExamSession(isBlank);
+}
+
+async function startExamSession(isBlank = false) {
+    switchView('exam-container');
+    questions = []; currentQuestionIndex = 0; timeRemaining = EXAM_CONFIG.totalTimeInMinutes * 60;
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = null; userResponses = {};
+
+    els.headerTitle.textContent = EXAM_CONFIG.examTitle;
+    els.markCorrect.textContent = EXAM_CONFIG.marksPerCorrect;
+    els.markIncorrect.textContent = EXAM_CONFIG.marksPerIncorrect;
+
+    if (!EXAM_CONFIG.showTimer) els.timerContainer.classList.add('hidden');
+    else els.timerContainer.classList.remove('hidden');
+
+    if (isBlank) { setupExam([]); return; }
+
+    els.loading.classList.remove('hidden');
+    els.loadingText.textContent = "Loading Questions...";
+
+    try {
+        let data = [];
+        if (EXAM_CONFIG.googleAppsScriptUrl && EXAM_CONFIG.googleAppsScriptUrl.trim() !== "") {
+            els.loadingText.textContent = "Fetching from Server...";
+            const response = await fetch(EXAM_CONFIG.googleAppsScriptUrl);
+            data = await response.json();
+        } else if (!EXAM_CONFIG.isCustomExam) {
+            els.loadingText.textContent = "Loading local questions...";
+            data = typeof FALLBACK_QUESTIONS !== 'undefined' ? FALLBACK_QUESTIONS : [];
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        const localData = localStorage.getItem('custom_questions');
+        if (localData) {
+            try { data = [...data, ...JSON.parse(localData)]; } catch (e) {}
+        }
+        setupExam(data || []);
+    } catch (error) {
+        console.error(error);
+        els.loadingText.textContent = "Error loading questions.";
+        els.loadingText.style.color = "red";
+    }
+}
+
+function setupExam(data) {
+    questions = data.map((q, idx) => ({ ...q, globalIndex: idx }));
+    questions.forEach((q, idx) => {
+        userResponses[idx] = { selectedOption: null, state: idx === 0 ? STATES.NOT_ANSWERED : STATES.NOT_VISITED };
+    });
+    els.totalNum.textContent = questions.length;
+    const subjectSet = new Set();
+    questions.forEach(q => { if (q.subject) subjectSet.add(q.subject); });
+    subjects = ["All", ...Array.from(subjectSet)];
+    renderSubjectTabs(); renderQuestionPalette();
+    els.loading.classList.add('hidden');
+    if (EXAM_CONFIG.showTimer) startTimer();
+    if (questions.length > 0) loadQuestion(0);
+    else {
+        els.qNum.textContent = "0"; els.qSubject.textContent = "None";
+        els.qText.textContent = "No questions added yet. Click 'Add Question' to start building this exam!";
+        els.optionsContainer.innerHTML = "";
+    }
+
+    const isBlank = localStorage.getItem('pending_exam_blank') === 'true';
+    if (!isBlank && !EXAM_CONFIG.allowAddingQuestionsDuringExam) {
+        els.btnOpenAdmin.style.display = 'none';
+    } else {
+        els.btnOpenAdmin.style.display = 'inline-block';
+    }
+}
+
+function startTimer() {
+    updateTimerDisplay();
+    timerInterval = setInterval(() => {
+        timeRemaining--; updateTimerDisplay();
+        if (timeRemaining <= 300) els.timerContainer.classList.add('warning');
+        if (timeRemaining <= 0) { clearInterval(timerInterval); submitExam(); }
+    }, 1000);
+}
+
+function updateTimerDisplay() {
+    const h = Math.floor(timeRemaining / 3600);
+    const m = Math.floor((timeRemaining % 3600) / 60);
+    const s = timeRemaining % 60;
+    els.timeLeft.textContent = 
+        h.toString().padStart(2, '0') + ':' + m.toString().padStart(2, '0') + ':' + s.toString().padStart(2, '0');
+}
+
+function loadQuestion(index) {
+    if (index < 0 || index >= questions.length) return;
+    currentQuestionIndex = index;
+    const q = questions[index];
+    if (userResponses[index].state === STATES.NOT_VISITED) {
+        userResponses[index].state = STATES.NOT_ANSWERED;
+        updatePaletteBubble(index);
+    }
+    els.qNum.textContent = index + 1;
+    els.qSubject.textContent = q.subject || "General";
+    els.qText.textContent = q.question;
+    els.optionsContainer.innerHTML = '';
+    const currentResponse = userResponses[index].selectedOption;
+    q.options.forEach((optText, optIndex) => {
+        const lbl = document.createElement('label');
+        lbl.className = 'option-label ' + (currentResponse === optIndex ? 'selected' : '');
+        const radio = document.createElement('input');
+        radio.type = 'radio'; radio.name = 'question-' + index;
+        radio.value = optIndex; radio.checked = currentResponse === optIndex;
+        radio.addEventListener('change', () => {
+            document.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected'));
+            lbl.classList.add('selected');
+            userResponses[index].selectedOption = optIndex;
+        });
+        lbl.appendChild(radio); lbl.appendChild(document.createTextNode(optText));
+        els.optionsContainer.appendChild(lbl);
+    });
+    updatePaletteBubble(index);
+
+    // Update btnSaveNext text if it is the last question
+    if (index === questions.length - 1) {
+        els.btnSaveNext.textContent = "Save & Submit";
+    } else {
+        els.btnSaveNext.textContent = "Save & Next";
+    }
+}
+
+function renderSubjectTabs() {
+    els.subjectTabs.innerHTML = '';
+    subjects.forEach(sub => {
+        const btn = document.createElement('button');
+        btn.className = 'tab ' + (sub === currentSubject ? 'active' : '');
+        btn.textContent = sub;
+        btn.onclick = () => {
+            currentSubject = sub;
+            els.currentSubjectLabel.textContent = sub;
+            renderSubjectTabs(); renderQuestionPalette();
+        };
+        els.subjectTabs.appendChild(btn);
+    });
+}
+
+function renderQuestionPalette() {
+    els.paletteGrid.innerHTML = '';
+    questions.forEach((q, idx) => {
+        if (currentSubject === "All" || q.subject === currentSubject) {
+            const bubble = document.createElement('div');
+            bubble.className = 'q-bubble ' + userResponses[idx].state;
+            bubble.id = 'bubble-' + idx;
+            bubble.textContent = idx + 1;
+            bubble.onclick = () => loadQuestion(idx);
+            els.paletteGrid.appendChild(bubble);
+        }
+    });
+}
+
+function updatePaletteBubble(index) {
+    const bubble = document.getElementById('bubble-' + index);
+    if (bubble) bubble.className = 'q-bubble ' + userResponses[index].state;
+}
+
+els.btnSaveNext.addEventListener('click', () => {
+    if (questions.length === 0) return;
+    const currentStatus = userResponses[currentQuestionIndex];
+    if (currentStatus.selectedOption !== null) currentStatus.state = STATES.ANSWERED;
+    else currentStatus.state = STATES.NOT_ANSWERED;
+    updatePaletteBubble(currentQuestionIndex); 
+    
+    if (currentQuestionIndex === questions.length - 1) {
+        document.getElementById('submit-confirm-modal').classList.remove('hidden');
+    } else {
+        goToNextQuestion();
+    }
+});
+
+els.btnMarkReview.addEventListener('click', () => {
+    if (questions.length === 0) return;
+    const currentStatus = userResponses[currentQuestionIndex];
+    if (currentStatus.selectedOption !== null) currentStatus.state = STATES.ANSWERED_MARKED;
+    else currentStatus.state = STATES.MARKED;
+    updatePaletteBubble(currentQuestionIndex); goToNextQuestion();
+});
+
+els.btnClear.addEventListener('click', () => {
+    if (questions.length === 0) return;
+    userResponses[currentQuestionIndex].selectedOption = null;
+    userResponses[currentQuestionIndex].state = STATES.NOT_ANSWERED;
+    loadQuestion(currentQuestionIndex); 
+});
+
+function goToNextQuestion() {
+    if (currentQuestionIndex < questions.length - 1) loadQuestion(currentQuestionIndex + 1);
+    else {
+        const nextUnvisited = questions.findIndex((q, idx) => userResponses[idx].state === STATES.NOT_VISITED);
+        if (nextUnvisited !== -1) loadQuestion(nextUnvisited);
+    }
+}
+
+els.btnSubmit.addEventListener('click', () => {
+    document.getElementById('submit-confirm-modal').classList.remove('hidden');
+});
+
+document.getElementById('btn-cancel-submit').addEventListener('click', () => {
+    document.getElementById('submit-confirm-modal').classList.add('hidden');
+});
+
+document.getElementById('btn-confirm-submit').addEventListener('click', () => {
+    document.getElementById('submit-confirm-modal').classList.add('hidden');
+    submitExam();
+});
+
+function submitExam() {
+    if (timerInterval) clearInterval(timerInterval);
+    switchView('result-container');
+    let attempted = 0; let correct = 0; let incorrect = 0;
+    questions.forEach((q, idx) => {
+        const response = userResponses[idx];
+        if (response.selectedOption !== null) {
+            attempted++;
+            if (response.selectedOption === q.correctOption) correct++; else incorrect++;
+        }
+    });
+    const finalScore = (correct * EXAM_CONFIG.marksPerCorrect) + (incorrect * EXAM_CONFIG.marksPerIncorrect);
+    const maxScore = questions.length * EXAM_CONFIG.marksPerCorrect;
+    document.getElementById('final-score').textContent = finalScore;
+    document.getElementById('max-score').textContent = maxScore;
+    document.getElementById('stat-attempted').textContent = attempted;
+    document.getElementById('stat-correct').textContent = correct;
+    document.getElementById('stat-incorrect').textContent = incorrect;
+}
+
+window.addEventListener('DOMContentLoaded', initExamApp);

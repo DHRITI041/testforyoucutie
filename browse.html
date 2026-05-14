@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE/NEET Mock Test Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- App Navigation (Global) -->
+    <nav class="global-nav">
+        <div class="nav-left">
+            <div class="logo" onclick="window.location.href='index.html'" style="cursor: pointer;">
+                <span class="logo-icon">T</span>
+                <span class="logo-text">TestKart</span>
+            </div>
+        </div>
+        <div class="nav-right">
+        </div>
+    </nav>
+
+
+
+    <!-- Browse Exams Container -->
+    <div id="browse-container" class="view-container active-view">
+        <div class="browse-content">
+            <div class="browse-header">
+                <div>
+                    <div class="overline">ALL EXAMS</div>
+                    <h2 class="browse-title">Pick a test, start the clock</h2>
+                </div>
+                <button id="btn-add-new-exam" class="btn-text"><i class="fa-solid fa-plus"></i> Add new</button>
+            </div>
+            
+            <div class="exam-list" id="exam-list">
+                <div class="exam-card">
+                    <div class="exam-badges">
+                        <span class="badge-subject">Physics / Chem / Math</span>
+                        <span class="badge-time"><i class="fa-regular fa-clock"></i> 180 min</span>
+                    </div>
+                    <h3 class="exam-card-title">JEE/NEET Full Mock Test</h3>
+                    <p class="exam-card-desc">Standard exam loaded from questions.js</p>
+                    <button class="btn-text-primary btn-start-exam" data-type="default">Start exam <i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>    <!-- Add Custom Exam Modal -->->
+    <div id="add-exam-modal" class="overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Create Custom Exam</h3>
+                <button id="btn-close-add-exam" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem; color: var(--text-muted);">You can add an exam using a JSON URL/App Script, or build one manually without code.</p>
+                
+                <div class="form-group">
+                    <label>Exam Title</label>
+                    <input type="text" id="custom-exam-title" placeholder="e.g. NEET 2026 Mock" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label>Duration (Minutes)</label>
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="custom-exam-time" placeholder="e.g. 180" class="form-control">
+                </div>
+                
+                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border);">
+                
+                <h4>Option 1: Import Javascript Array</h4>
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label>Paste Javascript Code</label>
+                    <textarea id="custom-exam-code" rows="5" placeholder="const myQuestions = [&#10;  {&#10;    subject: 'Physics',&#10;    question: 'Sample?',&#10;    options: ['A', 'B', 'C', 'D'],&#10;    correctOption: 0&#10;  }&#10;];" class="form-control" style="font-family: monospace;"></textarea>
+                </div>
+                
+                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border);">
+
+                <h4>Option 2: Manual Builder</h4>
+                <div id="manual-builder-section" style="background: var(--bg-surface); padding: 1rem; border-radius: 0.5rem; border: 1px solid var(--border); margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <span style="font-weight: 600; font-size: 0.9rem;">Question Builder</span>
+                        <span id="builder-count" style="font-size: 0.8rem; background: #2563eb; color: white; padding: 0.2rem 0.5rem; border-radius: 1rem;">0 Added</span>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="build-q-subject" placeholder="Subject (e.g. Physics)" class="form-control" style="margin-bottom: 0.5rem;">
+                        <textarea id="build-q-text" rows="2" placeholder="Type your question here..." class="form-control" style="margin-bottom: 0.5rem;"></textarea>
+                    </div>
+                    
+                    <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.5rem;">Options (Tick the correct one):</label>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="radio" name="build-q-correct" value="0" checked style="width: auto;">
+                            <input type="text" id="build-q-opt0" placeholder="Option A" class="form-control">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="radio" name="build-q-correct" value="1" style="width: auto;">
+                            <input type="text" id="build-q-opt1" placeholder="Option B" class="form-control">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="radio" name="build-q-correct" value="2" style="width: auto;">
+                            <input type="text" id="build-q-opt2" placeholder="Option C" class="form-control">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="radio" name="build-q-correct" value="3" style="width: auto;">
+                            <input type="text" id="build-q-opt3" placeholder="Option D" class="form-control">
+                        </div>
+                    </div>
+                    <button id="btn-add-manual-q" class="btn-outline" style="width: 100%; margin-top: 1rem; padding: 0.5rem;"><i class="fa-solid fa-plus"></i> Save & Add Another</button>
+                </div>
+
+                <div class="form-group" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="custom-exam-allow-edit" style="width: auto;">
+                    <label style="margin: 0; font-size: 0.9rem;">Allow adding questions during exam</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-save-custom-exam" class="btn-orange">Add & Start Exam</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Details Modal -->
+    <div id="student-modal" class="overlay hidden">
+        <div class="modal-card" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Enter Student Details</h3>
+                <button id="btn-close-student" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="student-name" placeholder="e.g. John Doe" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Roll Number</label>
+                    <input type="text" id="student-roll" placeholder="e.g. 101" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-confirm-start-exam" class="btn-primary" style="width: 100%;">Start Exam Now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="questions.js"></script>
+    <script src="config.js"></script>
+    <script src="browse.js"></script>
+</body>
+</html>

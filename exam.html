@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE/NEET Mock Test Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- App Loading Overlay -->
+    <div id="loading-overlay" class="overlay hidden">
+        <div class="loader"></div>
+        <h2 id="loading-text">Loading Questions...</h2>
+    </div>
+
+    <!-- Main Exam Container -->
+    <div id="exam-container" class="view-container">
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span id="header-title">JEE/NEET Portal</span>
+                </div>
+                <button id="btn-open-admin" class="btn-outline" style="margin-left: 1rem; padding: 0.5rem 1rem; font-size: 0.8rem;"><i class="fa-solid fa-plus"></i> Add Question</button>
+            </div>
+            <div class="header-right">
+                <div id="timer-container" class="timer-box">
+                    <i class="fa-regular fa-clock"></i>
+                    <span id="time-left">00:00:00</span>
+                </div>
+                <button id="btn-submit-exam" class="btn-danger">Submit Exam</button>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <!-- Left Side: Question Area -->
+            <section class="question-section">
+                <div class="question-header">
+                    <div class="q-number-box">
+                        Question <span id="current-q-num">1</span> of <span id="total-q-num">0</span>
+                    </div>
+                    <div class="q-marks-box">
+                        <span class="mark-positive">+<span id="mark-correct">4</span></span>
+                        <span class="mark-negative"><span id="mark-incorrect">-1</span></span>
+                    </div>
+                </div>
+
+                <div class="question-content">
+                    <div class="subject-badge" id="q-subject">Physics</div>
+                    <p id="q-text" class="q-text">Question text goes here...</p>
+                    
+                    <div id="options-container" class="options-container">
+                        <!-- Options will be injected here -->
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="btn-mark-review" class="btn-secondary">Mark for Review & Next</button>
+                    <button id="btn-clear" class="btn-outline">Clear Response</button>
+                    <button id="btn-save-next" class="btn-primary">Save & Next</button>
+                </div>
+            </section>
+
+            <!-- Right Side: Navigation Palette -->
+            <aside class="palette-section">
+                <div class="user-info">
+                    <img src="https://ui-avatars.com/api/?name=Candidate&background=2563eb&color=fff" alt="User" class="avatar" id="student-avatar">
+                    <div class="user-details">
+                        <h4 id="student-name-display">Candidate</h4>
+                        <p id="student-roll-display" style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.25rem;">Roll: N/A</p>
+                        <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">Subject: <span id="current-subject-label">All</span></p>
+                    </div>
+                </div>
+
+                <div class="status-legend">
+                    <div class="legend-item"><span class="legend-color not-visited"></span> Not Visited</div>
+                    <div class="legend-item"><span class="legend-color not-answered"></span> Not Answered</div>
+                    <div class="legend-item"><span class="legend-color answered"></span> Answered</div>
+                    <div class="legend-item"><span class="legend-color marked"></span> Marked for Review</div>
+                    <div class="legend-item"><span class="legend-color answered-marked"></span> Answered & Marked</div>
+                </div>
+
+                <div class="subject-tabs" id="subject-tabs">
+                    <!-- Subject tabs injected here -->
+                </div>
+
+                <div class="palette-grid" id="palette-grid">
+                    <!-- Question numbers injected here -->
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Result Container -->
+    <div id="result-container" class="view-container">
+        <div class="result-card">
+            <h2><i class="fa-solid fa-trophy"></i> Exam Completed!</h2>
+            <div class="score-display">
+                <div class="score-circle">
+                    <span id="final-score">0</span>
+                    <span class="score-divider">/</span>
+                    <span id="max-score">0</span>
+                </div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-value" id="stat-attempted">0</div>
+                    <div class="stat-label">Attempted</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value text-success" id="stat-correct">0</div>
+                    <div class="stat-label">Correct</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value text-danger" id="stat-incorrect">0</div>
+                    <div class="stat-label">Incorrect</div>
+                </div>
+            </div>
+
+            <button onclick="window.location.href='index.html'" class="btn-primary mt-4">Go to Home</button>
+        </div>
+    </div>
+
+    <!-- Admin / Add Question Modal -->
+    <div id="admin-modal" class="overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Add New MCQ Question</h3>
+                <button id="btn-close-admin" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Subject</label>
+                    <input type="text" id="add-q-subject" placeholder="e.g. Physics, Chemistry, Biology..." class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Question</label>
+                    <textarea id="add-q-text" rows="3" placeholder="Enter the question text..." class="form-control"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Option A (0)</label>
+                    <input type="text" id="add-q-opt0" placeholder="Option A text..." class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Option B (1)</label>
+                    <input type="text" id="add-q-opt1" placeholder="Option B text..." class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Option C (2)</label>
+                    <input type="text" id="add-q-opt2" placeholder="Option C text..." class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Option D (3)</label>
+                    <input type="text" id="add-q-opt3" placeholder="Option D text..." class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Correct Option</label>
+                    <select id="add-q-correct" class="form-control">
+                        <option value="0">Option A</option>
+                        <option value="1">Option B</option>
+                        <option value="2">Option C</option>
+                        <option value="3">Option D</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-save-question" class="btn-primary">Save Question</button>
+                <button id="btn-export-questions" class="btn-secondary">Export All Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Confirmation Modal -->
+    <div id="submit-confirm-modal" class="overlay hidden">
+        <div class="modal-card" style="max-width: 400px; text-align: center;">
+            <div class="modal-body" style="padding-top: 1.5rem;">
+                <div style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                </div>
+                <h3 style="margin-bottom: 0.5rem;">Submit Exam?</h3>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">Are you sure you want to submit your exam? You won't be able to change your answers after submission.</p>
+            </div>
+            <div class="modal-footer" style="justify-content: space-between; gap: 1rem; border-top: none;">
+                <button id="btn-cancel-submit" class="btn-outline" style="flex: 1;">Cancel</button>
+                <button id="btn-confirm-submit" class="btn-danger" style="flex: 1;">Submit Exam</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="questions.js"></script>
+    <script src="config.js"></script>
+    <script src="exam.js"></script>
+</body>
+</html>

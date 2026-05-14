@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html><body>
+<h1>Debug Output</h1>
+<pre id="log"></pre>
+<script>
+window.onerror = function(msg, url, line) {
+    document.getElementById('log').innerText += 'Error: ' + msg + ' at ' + line + '\n';
+};
+</script>
+<script src="config.js"></script>
+<script src="questions.js"></script>
+<script src="app.js"></script>
+<script>
+    document.getElementById('log').innerText += 'App.js loaded successfully without syntax errors!\n';
+</script>
+</body></html>
