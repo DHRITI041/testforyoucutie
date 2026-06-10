@@ -15,11 +15,32 @@ const els = {
     buildQOpt2: document.getElementById('build-q-opt2'),
     buildQOpt3: document.getElementById('build-q-opt3'),
     btnAddManualQ: document.getElementById('btn-add-manual-q'),
-    builderCount: document.getElementById('builder-count')
+    builderCount: document.getElementById('builder-count'),
+
+    // New Modals
+    roleSelectionModal: document.getElementById('role-selection-modal'),
+    btnCloseRoleSelection: document.getElementById('btn-close-role-selection'),
+    btnRoleTeacher: document.getElementById('btn-role-teacher'),
+    btnRoleStudent: document.getElementById('btn-role-student'),
+    btnJoinExam: document.getElementById('btn-join-exam'),
+    
+    teacherModal: document.getElementById('teacher-modal'),
+    btnCloseTeacher: document.getElementById('btn-close-teacher'),
+    btnGenerateLink: document.getElementById('btn-generate-link'),
+    btnCopyLink: document.getElementById('btn-copy-link'),
+    teacherExamLink: document.getElementById('teacher-exam-link'),
+    teacherLinkContainer: document.getElementById('teacher-link-container'),
+    
+    studentModal: document.getElementById('student-modal'),
+    btnCloseStudent: document.getElementById('btn-close-student'),
+    btnConfirmStartExam: document.getElementById('btn-confirm-start-exam'),
+    studentAuthSection: document.getElementById('student-auth-section'),
+    studentAuthError: document.getElementById('student-auth-error')
 };
 
 let pendingExamIsBlank = false;
 let manualQuestions = [];
+let isJoinExamMode = false;
 
 function initApp() {
     // Check URL parameters for direct modal opening
@@ -28,15 +49,102 @@ function initApp() {
         els.addExamModal.classList.remove('hidden');
     }
 
+    const examIdParam = urlParams.get('examId');
+    if (examIdParam) {
+        document.getElementById('student-exam-id').value = examIdParam;
+        els.studentAuthSection.classList.remove('hidden');
+        els.studentModal.classList.remove('hidden');
+        isJoinExamMode = true;
+    }
+
+    els.btnJoinExam.addEventListener('click', () => {
+        els.studentAuthSection.classList.remove('hidden');
+        els.studentModal.classList.remove('hidden');
+        isJoinExamMode = true;
+    });
+
     els.btnAddNewExam.addEventListener('click', () => els.addExamModal.classList.remove('hidden'));
     els.btnCloseAddExam.addEventListener('click', () => els.addExamModal.classList.add('hidden'));
 
     document.querySelector('.btn-start-exam').addEventListener('click', () => {
         EXAM_CONFIG.googleAppsScriptUrl = "";
         EXAM_CONFIG.isCustomExam = false;
-        EXAM_CONFIG.allowAddingQuestionsDuringExam = false; // Default exam restricts adding questions
+        EXAM_CONFIG.allowAddingQuestionsDuringExam = false; 
         pendingExamIsBlank = false;
-        document.getElementById('student-modal').classList.remove('hidden');
+        els.roleSelectionModal.classList.remove('hidden');
+    });
+
+    // Role Selection
+    els.btnCloseRoleSelection.addEventListener('click', () => els.roleSelectionModal.classList.add('hidden'));
+    
+    els.btnRoleStudent.addEventListener('click', () => {
+        els.roleSelectionModal.classList.add('hidden');
+        els.studentAuthSection.classList.add('hidden');
+        currentProtectedExam = null;
+        els.studentModal.classList.remove('hidden');
+    });
+
+    els.btnRoleTeacher.addEventListener('click', () => {
+        els.roleSelectionModal.classList.add('hidden');
+        
+        // Auto-generate Exam ID
+        const randomId = 'TEST-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        document.getElementById('teacher-exam-id').value = randomId;
+        
+        els.teacherModal.classList.remove('hidden');
+    });
+
+    // Teacher Modal
+    els.btnCloseTeacher.addEventListener('click', () => els.teacherModal.classList.add('hidden'));
+
+    els.btnGenerateLink.addEventListener('click', async () => {
+        const time = document.getElementById('teacher-exam-time').value || 180;
+        const marksCorrect = document.getElementById('teacher-marks-correct').value || 4;
+        const toggleNegative = document.getElementById('teacher-negative-toggle').checked;
+        const marksIncorrect = toggleNegative ? (document.getElementById('teacher-marks-incorrect').value || -1) : 0;
+        const examId = document.getElementById('teacher-exam-id').value.trim();
+        const examPass = document.getElementById('teacher-exam-pass').value.trim();
+        const teacherName = document.getElementById('teacher-name').value.trim() || 'Teacher';
+
+        if (!examId || !examPass) {
+            alert("Please provide an Exam ID and Password for security.");
+            return;
+        }
+
+        els.btnGenerateLink.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        els.btnGenerateLink.disabled = true;
+
+        const { data, error } = await supabase.from('exams').insert([
+            { 
+                id: examId, 
+                password: examPass, 
+                duration: parseInt(time), 
+                marks_correct: parseInt(marksCorrect), 
+                marks_incorrect: parseInt(marksIncorrect),
+                teacher_name: teacherName
+            }
+        ]);
+
+        els.btnGenerateLink.innerHTML = 'Generate Link';
+        els.btnGenerateLink.disabled = false;
+
+        if (error) {
+            alert("Error saving exam: " + error.message);
+            return;
+        }
+
+        const link = window.location.origin + window.location.pathname + "?examId=" + encodeURIComponent(examId);
+        els.teacherExamLink.value = link;
+        els.teacherLinkContainer.classList.remove('hidden');
+    });
+
+    els.btnCopyLink.addEventListener('click', () => {
+        els.teacherExamLink.select();
+        document.execCommand('copy');
+        els.btnCopyLink.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+        setTimeout(() => {
+            els.btnCopyLink.innerHTML = '<i class="fa-solid fa-copy"></i> Copy';
+        }, 2000);
     });
 
     els.btnAddManualQ.addEventListener('click', () => {
@@ -112,14 +220,49 @@ function initApp() {
         
         els.addExamModal.classList.add('hidden');
         pendingExamIsBlank = !code && manualQuestions.length === 0;
-        document.getElementById('student-modal').classList.remove('hidden');
+        els.roleSelectionModal.classList.remove('hidden');
     });
 
-    document.getElementById('btn-close-student').addEventListener('click', () => {
-        document.getElementById('student-modal').classList.add('hidden');
+    els.btnCloseStudent.addEventListener('click', () => {
+        els.studentModal.classList.add('hidden');
     });
 
-    document.getElementById('btn-confirm-start-exam').addEventListener('click', () => {
+    els.btnConfirmStartExam.addEventListener('click', async () => {
+        els.studentAuthError.classList.add('hidden');
+
+        if (isJoinExamMode) {
+            const idVal = document.getElementById('student-exam-id').value.trim();
+            const passVal = document.getElementById('student-exam-pass').value.trim();
+            
+            if (!idVal || !passVal) {
+                alert("Exam ID and Password are required to join.");
+                return;
+            }
+
+            els.btnConfirmStartExam.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+            els.btnConfirmStartExam.disabled = true;
+
+            const { data, error } = await supabase
+                .from('exams')
+                .select('*')
+                .eq('id', idVal)
+                .eq('password', passVal)
+                .single();
+                
+            els.btnConfirmStartExam.innerHTML = 'Start Exam Now';
+            els.btnConfirmStartExam.disabled = false;
+
+            if (error || !data) {
+                els.studentAuthError.classList.remove('hidden');
+                return;
+            }
+            
+            EXAM_CONFIG.totalTimeInMinutes = data.duration;
+            EXAM_CONFIG.marksPerCorrect = data.marks_correct;
+            EXAM_CONFIG.marksPerIncorrect = data.marks_incorrect;
+            EXAM_CONFIG.examTitle = "Exam: " + data.id;
+        }
+
         const name = document.getElementById('student-name').value.trim() || 'Candidate';
         const roll = document.getElementById('student-roll').value.trim() || 'N/A';
         

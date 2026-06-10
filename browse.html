@@ -32,7 +32,10 @@
                     <div class="overline">ALL EXAMS</div>
                     <h2 class="browse-title">Pick a test, start the clock</h2>
                 </div>
-                <button id="btn-add-new-exam" class="btn-text"><i class="fa-solid fa-plus"></i> Add new</button>
+                <div>
+                    <button id="btn-join-exam" class="btn-text" style="margin-right: 0.5rem;"><i class="fa-solid fa-right-to-bracket"></i> Join Exam</button>
+                    <button id="btn-add-new-exam" class="btn-text"><i class="fa-solid fa-plus"></i> Add new</button>
+                </div>
             </div>
             
             <div class="exam-list" id="exam-list">
@@ -121,6 +124,83 @@
         </div>
     </div>
 
+    <!-- Role Selection Modal -->
+    <div id="role-selection-modal" class="overlay hidden">
+        <div class="modal-card" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Select Your Role</h3>
+                <button id="btn-close-role-selection" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="display: flex; gap: 1rem; padding: 2rem 1rem;">
+                <button id="btn-role-teacher" class="btn-outline" style="flex: 1; padding: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; align-items: center;">
+                    <i class="fa-solid fa-chalkboard-user" style="font-size: 2rem;"></i>
+                    <span>Teacher</span>
+                </button>
+                <button id="btn-role-student" class="btn-primary" style="flex: 1; padding: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; align-items: center;">
+                    <i class="fa-solid fa-user-graduate" style="font-size: 2rem;"></i>
+                    <span>Student</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Teacher Configuration Modal -->
+    <div id="teacher-modal" class="overlay hidden">
+        <div class="modal-card" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Teacher Configuration</h3>
+                <button id="btn-close-teacher" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Teacher Name (Optional)</label>
+                    <input type="text" id="teacher-name" placeholder="e.g. Mr. Smith" class="form-control">
+                </div>
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <label>Duration (Minutes)</label>
+                        <input type="number" id="teacher-exam-time" placeholder="180" value="180" class="form-control">
+                    </div>
+                    <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                        <label>Marks per Correct</label>
+                        <input type="number" id="teacher-marks-correct" placeholder="4" value="4" class="form-control">
+                    </div>
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-surface); padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border);">
+                    <label style="margin: 0;">Negative Marking</label>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <label class="switch">
+                            <input type="checkbox" id="teacher-negative-toggle" checked>
+                            <span class="slider round"></span>
+                        </label>
+                        <input type="number" id="teacher-marks-incorrect" placeholder="-1" value="-1" class="form-control" style="width: 60px; padding: 0.25rem 0.5rem;">
+                    </div>
+                </div>
+                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border);">
+                <h4>Security Settings</h4>
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label>Exam ID (Auto-generated)</label>
+                    <input type="text" id="teacher-exam-id" readonly class="form-control" style="background: var(--border-light); font-weight: bold; color: var(--primary);">
+                </div>
+                <div class="form-group">
+                    <label>Exam Password</label>
+                    <input type="text" id="teacher-exam-pass" placeholder="Enter a password for students" class="form-control">
+                </div>
+
+                <div id="teacher-link-container" class="hidden" style="margin-top: 1.5rem; background: #ecfdf5; padding: 1rem; border-radius: 0.5rem; border: 1px solid #10b981;">
+                    <label style="color: #065f46; font-weight: 600; font-size: 0.9rem;">Share this link with students:</label>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                        <input type="text" id="teacher-exam-link" readonly class="form-control" style="background: white;">
+                        <button id="btn-copy-link" class="btn-primary" style="white-space: nowrap;"><i class="fa-solid fa-copy"></i> Copy</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-generate-link" class="btn-orange" style="width: 100%;">Generate Link</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Student Details Modal -->
     <div id="student-modal" class="overlay hidden">
         <div class="modal-card" style="max-width: 400px;">
@@ -129,6 +209,19 @@
                 <button id="btn-close-student" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body">
+                <div id="student-auth-section" class="hidden" style="background: var(--bg-surface); padding: 1rem; border-radius: 0.5rem; border: 1px solid var(--border); margin-bottom: 1.5rem;">
+                    <h4 style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-main);"><i class="fa-solid fa-lock"></i> Protected Exam</h4>
+                    <div class="form-group">
+                        <label>Exam ID</label>
+                        <input type="text" id="student-exam-id" placeholder="Enter Exam ID" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="student-exam-pass" placeholder="Enter Exam Password" class="form-control">
+                    </div>
+                    <div id="student-auth-error" class="hidden" style="color: #ef4444; font-size: 0.85rem; margin-top: 0.5rem;"><i class="fa-solid fa-circle-exclamation"></i> Incorrect Exam ID or Password.</div>
+                </div>
+
                 <div class="form-group">
                     <label>Full Name</label>
                     <input type="text" id="student-name" placeholder="e.g. John Doe" class="form-control">
@@ -145,6 +238,8 @@
     </div>
 
     <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
     <script src="questions.js"></script>
     <script src="config.js"></script>
     <script src="browse.js"></script>
