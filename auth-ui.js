@@ -173,6 +173,9 @@ supabase.auth.onAuthStateChange((event, session) => {
 
     if (session) {
         // Logged in
+        btnCloseAuth.style.display = 'block';
+        document.body.style.overflow = 'auto';
+        
         navRight.innerHTML = `
             <div class="user-profile-nav" style="display: flex; align-items: center; gap: 1rem;">
                 <span style="font-size: 0.9rem; color: var(--text);">${session.user.email}</span>
@@ -183,12 +186,20 @@ supabase.auth.onAuthStateChange((event, session) => {
             authModal.classList.add('hidden');
             onAuthSuccessCallback();
             onAuthSuccessCallback = null;
+        } else {
+            authModal.classList.add('hidden');
         }
     } else {
-        // Logged out
+        // Logged out (FORCED LOGIN)
+        btnCloseAuth.style.display = 'none';
+        document.body.style.overflow = 'hidden'; // Prevent scrolling background
+        
         navRight.innerHTML = `
             <button class="btn-text" onclick="window.openAuthModal()">Log In</button>
             <button class="btn-primary" onclick="tabSignUp.click(); window.openAuthModal();" style="padding: 0.4rem 1rem;">Sign Up</button>
         `;
+        
+        // Force the modal open if they are not logged in
+        window.openAuthModal();
     }
 });
