@@ -191,6 +191,23 @@
         </div>
     </div>
 
+    <!-- Cheat Warning Modal -->
+    <div id="cheat-warning-modal" class="overlay hidden">
+        <div class="modal-card" style="max-width: 400px; text-align: center;">
+            <div class="modal-body" style="padding-top: 1.5rem;">
+                <div style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h3 style="margin-bottom: 0.5rem; color: #ef4444;">Warning!</h3>
+                <p id="cheat-warning-msg" style="color: var(--text-muted); font-size: 0.95rem;">You are not allowed to change tabs, minimize the browser, or leave the exam window. This activity has been recorded. Repeated violations may result in exam cancellation.</p>
+                <div style="margin-top: 1rem; font-weight: 600; color: #ef4444;">Total Warnings: <span id="cheat-warning-count" style="font-size: 1.2rem;">0</span></div>
+            </div>
+            <div class="modal-footer" style="justify-content: center; border-top: none;">
+                <button id="btn-acknowledge-warning" class="btn-primary" style="width: 100%;">I Understand</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="questions.js"></script>
     <script src="config.js"></script>

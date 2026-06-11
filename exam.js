@@ -6,6 +6,118 @@ let timerInterval = null;
 let userResponses = {}; 
 let subjects = [];
 let currentSubject = "All";
+let isExamActive = false;
+
+// Prevent accidental exit
+window.addEventListener('beforeunload', (e) => {
+    if (isExamActive) {
+        e.preventDefault();
+        e.returnValue = 'You are currently in an exam. Are you sure you want to leave? Your progress will be lost.';
+    }
+});
+
+// Prevent back button
+history.pushState(null, null, location.href);
+window.onpopstate = function () {
+    if (isExamActive) {
+        history.go(1);
+    }
+};
+
+// Prevent right-click and copy
+document.addEventListener('contextmenu', (e) => {
+    if (isExamActive) e.preventDefault();
+});
+
+document.addEventListener('copy', (e) => {
+    if (isExamActive) e.preventDefault();
+});
+
+// Tab switching cheat detection
+let cheatWarningsCount = parseInt(localStorage.getItem('cheatWarningsCount')) || 0;
+let isPenaltyActive = false;
+let penaltyTimerInterval = null;
+
+function showPenaltyModal(penaltySeconds) {
+    const countSpan = document.getElementById('cheat-warning-count');
+    if (countSpan) countSpan.textContent = cheatWarningsCount;
+    
+    const modal = document.getElementById('cheat-warning-modal');
+    const btn = document.getElementById('btn-acknowledge-warning');
+    const msg = document.getElementById('cheat-warning-msg');
+    
+    isPenaltyActive = true;
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+    
+    const penaltyMinutes = Math.ceil(penaltySeconds / 60);
+    if (msg) msg.textContent = `You are not allowed to change tabs. Due to repeated violations, your exam is paused and you are locked out for ${penaltyMinutes} minutes.`;
+    
+    if (penaltyTimerInterval) clearInterval(penaltyTimerInterval);
+    
+    penaltyTimerInterval = setInterval(() => {
+        penaltySeconds--;
+        if (penaltySeconds <= 0) {
+            clearInterval(penaltyTimerInterval);
+            isPenaltyActive = false;
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            btn.textContent = "I Understand";
+            if (msg) msg.textContent = "You are not allowed to change tabs, minimize the browser, or leave the exam window. This activity has been recorded. Repeated violations may result in exam cancellation.";
+            localStorage.removeItem('penaltyEndTime');
+        } else {
+            const m = Math.floor(penaltySeconds / 60);
+            const s = penaltySeconds % 60;
+            btn.textContent = `Wait ${m}:${s.toString().padStart(2, '0')}`;
+        }
+    }, 1000);
+    
+    const m = Math.floor(penaltySeconds / 60);
+    const s = penaltySeconds % 60;
+    btn.textContent = `Wait ${m}:${s.toString().padStart(2, '0')}`;
+    
+    modal.classList.remove('hidden');
+}
+
+function checkActivePenalty() {
+    if (cheatWarningsCount >= 9) {
+        alert("Your exam was automatically submitted due to excessive rule violations.");
+        submitExam();
+        return;
+    }
+    
+    const penaltyEndTime = parseInt(localStorage.getItem('penaltyEndTime')) || 0;
+    const now = Date.now();
+    if (penaltyEndTime > now) {
+        const remainingSeconds = Math.ceil((penaltyEndTime - now) / 1000);
+        showPenaltyModal(remainingSeconds);
+    }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (isExamActive && document.visibilityState === 'hidden') {
+        cheatWarningsCount++;
+        localStorage.setItem('cheatWarningsCount', cheatWarningsCount);
+        
+        if (cheatWarningsCount >= 9) {
+            document.getElementById('cheat-warning-modal').classList.add('hidden');
+            alert("Your exam has been automatically submitted due to excessive rule violations (9 warnings).");
+            submitExam();
+        } else if (cheatWarningsCount >= 3) {
+            const penaltyMinutes = (cheatWarningsCount - 2) * 5;
+            const penaltySeconds = penaltyMinutes * 60;
+            const penaltyEndTime = Date.now() + (penaltySeconds * 1000);
+            localStorage.setItem('penaltyEndTime', penaltyEndTime);
+            showPenaltyModal(penaltySeconds);
+        } else {
+            const countSpan = document.getElementById('cheat-warning-count');
+            if (countSpan) countSpan.textContent = cheatWarningsCount;
+            document.getElementById('cheat-warning-modal').classList.remove('hidden');
+        }
+    }
+});
 
 const STATES = {
     NOT_VISITED: 'not-visited',
@@ -195,6 +307,8 @@ function setupExam(data) {
     subjects = ["All", ...Array.from(subjectSet)];
     renderSubjectTabs(); renderQuestionPalette();
     els.loading.classList.add('hidden');
+    isExamActive = true;
+    checkActivePenalty();
     if (EXAM_CONFIG.showTimer) startTimer();
     if (questions.length > 0) loadQuestion(0);
     else {
@@ -349,7 +463,12 @@ document.getElementById('btn-confirm-submit').addEventListener('click', () => {
     submitExam();
 });
 
+document.getElementById('btn-acknowledge-warning')?.addEventListener('click', () => {
+    document.getElementById('cheat-warning-modal').classList.add('hidden');
+});
+
 function submitExam() {
+    isExamActive = false;
     if (timerInterval) clearInterval(timerInterval);
     switchView('result-container');
     let attempted = 0; let correct = 0; let incorrect = 0;

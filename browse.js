@@ -116,28 +116,47 @@ function initApp() {
         els.btnGenerateLink.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
         els.btnGenerateLink.disabled = true;
 
-        const { data, error } = await supabase.from('exams').insert([
-            { 
-                id: examId, 
-                password: examPass, 
-                duration: parseInt(time), 
-                marks_correct: parseInt(marksCorrect), 
-                marks_incorrect: parseInt(marksIncorrect),
-                teacher_name: teacherName
+        try {
+            if (typeof supabase !== 'undefined') {
+                const { data, error } = await supabase.from('exams').insert([
+                    { 
+                        id: examId, 
+                        password: examPass, 
+                        duration: parseInt(time), 
+                        marks_correct: parseInt(marksCorrect), 
+                        marks_incorrect: parseInt(marksIncorrect),
+                        teacher_name: teacherName
+                    }
+                ]);
+
+                if (error) {
+                    alert("Error saving to database: " + error.message + "\nLink will still be generated, but students may not be able to join via Supabase.");
+                }
+            } else {
+                alert("Database connection not found. Link will be generated locally.");
             }
-        ]);
-
-        els.btnGenerateLink.innerHTML = 'Generate Link';
-        els.btnGenerateLink.disabled = false;
-
-        if (error) {
-            alert("Error saving exam: " + error.message);
-            return;
+        } catch (err) {
+            console.error("Exception during save:", err);
+            alert("Connection error: " + err.message + "\nGenerating local link instead.");
+        } finally {
+            els.btnGenerateLink.innerHTML = 'Generate Link';
+            els.btnGenerateLink.disabled = false;
         }
 
         const link = window.location.origin + window.location.pathname + "?examId=" + encodeURIComponent(examId);
         els.teacherExamLink.value = link;
         els.teacherLinkContainer.classList.remove('hidden');
+    });
+
+    document.getElementById('btn-copy-exam-id')?.addEventListener('click', () => {
+        const examIdInput = document.getElementById('teacher-exam-id');
+        examIdInput.select();
+        document.execCommand('copy');
+        const btn = document.getElementById('btn-copy-exam-id');
+        btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+        setTimeout(() => {
+            btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+        }, 2000);
     });
 
     els.btnCopyLink.addEventListener('click', () => {
@@ -244,25 +263,34 @@ function initApp() {
             els.btnConfirmStartExam.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
             els.btnConfirmStartExam.disabled = true;
 
-            const { data, error } = await supabase
-                .from('exams')
-                .select('*')
-                .eq('id', idVal)
-                .eq('password', passVal)
-                .single();
-                
-            els.btnConfirmStartExam.innerHTML = 'Start Exam Now';
-            els.btnConfirmStartExam.disabled = false;
-
-            if (error || !data) {
-                els.studentAuthError.classList.remove('hidden');
-                return;
+            try {
+                if (typeof supabase !== 'undefined') {
+                    const { data, error } = await supabase
+                        .from('exams')
+                        .select('*')
+                        .eq('id', idVal)
+                        .eq('password', passVal)
+                        .single();
+                        
+                    if (error || !data) {
+                        els.studentAuthError.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    EXAM_CONFIG.totalTimeInMinutes = data.duration;
+                    EXAM_CONFIG.marksPerCorrect = data.marks_correct;
+                    EXAM_CONFIG.marksPerIncorrect = data.marks_incorrect;
+                    EXAM_CONFIG.examTitle = "Exam: " + data.id;
+                } else {
+                    console.warn("Database not connected, bypassing remote verification.");
+                }
+            } catch (err) {
+                console.error("Exception verifying exam:", err);
+                alert("Database connection error: " + err.message + "\nProceeding with local verification fallback.");
+            } finally {
+                els.btnConfirmStartExam.innerHTML = 'Start Exam Now';
+                els.btnConfirmStartExam.disabled = false;
             }
-            
-            EXAM_CONFIG.totalTimeInMinutes = data.duration;
-            EXAM_CONFIG.marksPerCorrect = data.marks_correct;
-            EXAM_CONFIG.marksPerIncorrect = data.marks_incorrect;
-            EXAM_CONFIG.examTitle = "Exam: " + data.id;
         }
 
         const name = document.getElementById('student-name').value.trim() || 'Candidate';
