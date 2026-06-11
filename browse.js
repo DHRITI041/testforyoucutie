@@ -117,7 +117,7 @@ function initApp() {
         els.btnGenerateLink.disabled = true;
 
         try {
-            if (typeof supabase !== 'undefined') {
+            if (typeof supabase !== 'undefined' && supabase.from) {
                 const { data, error } = await supabase.from('exams').insert([
                     { 
                         id: examId, 
@@ -130,14 +130,13 @@ function initApp() {
                 ]);
 
                 if (error) {
-                    alert("Error saving to database: " + error.message + "\nLink will still be generated, but students may not be able to join via Supabase.");
+                    console.warn("Error saving to database: " + error.message);
                 }
             } else {
-                alert("Database connection not found. Link will be generated locally.");
+                console.warn("Database connection not found. Generating link locally.");
             }
         } catch (err) {
             console.error("Exception during save:", err);
-            alert("Connection error: " + err.message + "\nGenerating local link instead.");
         } finally {
             els.btnGenerateLink.innerHTML = 'Generate Link';
             els.btnGenerateLink.disabled = false;
@@ -264,7 +263,7 @@ function initApp() {
             els.btnConfirmStartExam.disabled = true;
 
             try {
-                if (typeof supabase !== 'undefined') {
+                if (typeof supabase !== 'undefined' && supabase.from) {
                     const { data, error } = await supabase
                         .from('exams')
                         .select('*')
@@ -286,7 +285,6 @@ function initApp() {
                 }
             } catch (err) {
                 console.error("Exception verifying exam:", err);
-                alert("Database connection error: " + err.message + "\nProceeding with local verification fallback.");
             } finally {
                 els.btnConfirmStartExam.innerHTML = 'Start Exam Now';
                 els.btnConfirmStartExam.disabled = false;
