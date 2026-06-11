@@ -59,7 +59,19 @@ const AuthSystem = {
                         </div>
                         <div class="form-group">
                             <label>Password</label>
-                            <input type="password" id="auth-password" class="form-control" placeholder="••••••••">
+                            <div style="position: relative;">
+                                <input type="password" id="auth-password" class="form-control" placeholder="••••••••" style="padding-right: 2.5rem;">
+                                <button id="btn-toggle-password" type="button" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; width: 24px; height: 24px;">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; margin-bottom: 1rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; cursor: pointer; font-size: 0.9rem; color: var(--text-muted); font-weight: normal;">
+                                <input type="checkbox" id="auth-remember" style="width: auto; margin: 0;">
+                                Remember me
+                            </label>
                         </div>
                         
                         <button id="btn-submit-auth" class="btn-primary" style="width: 100%; margin-top: 1rem;">Sign In</button>
@@ -77,6 +89,23 @@ const AuthSystem = {
         document.getElementById('tab-signup').addEventListener('click', () => this.switchTab('signup'));
 
         document.getElementById('btn-submit-auth').addEventListener('click', () => this.handleSubmit());
+        document.getElementById('btn-toggle-password').addEventListener('click', () => this.togglePasswordVisibility());
+    },
+
+    togglePasswordVisibility: function() {
+        const passwordInput = document.getElementById('auth-password');
+        const toggleBtn = document.getElementById('btn-toggle-password');
+        const icon = toggleBtn.querySelector('i');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            passwordInput.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
     },
 
     switchTab: function(mode) {
@@ -88,6 +117,14 @@ const AuthSystem = {
         const errorMsg = document.getElementById('auth-error-msg');
         
         errorMsg.classList.add('hidden');
+
+        // Reset password visibility on tab switch
+        const passwordInput = document.getElementById('auth-password');
+        const toggleBtn = document.getElementById('btn-toggle-password');
+        const icon = toggleBtn.querySelector('i');
+        passwordInput.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
 
         if (mode === 'signin') {
             tabSignin.style.color = 'var(--primary)';
@@ -120,6 +157,12 @@ const AuthSystem = {
         if (!email || !password) {
             this.showError("Please enter both email and password.");
             return;
+        }
+
+        // Store "Remember me" state before log in
+        const rememberCheckbox = document.getElementById('auth-remember');
+        if (rememberCheckbox) {
+            localStorage.setItem('remember_me', rememberCheckbox.checked ? 'true' : 'false');
         }
 
         btn.disabled = true;
@@ -186,6 +229,10 @@ const AuthSystem = {
     openModal: function() {
         document.getElementById('auth-email').value = '';
         document.getElementById('auth-password').value = '';
+        const rememberCheckbox = document.getElementById('auth-remember');
+        if (rememberCheckbox) {
+            rememberCheckbox.checked = localStorage.getItem('remember_me') === 'true';
+        }
         document.getElementById('auth-error-msg').classList.add('hidden');
         document.getElementById('auth-modal').classList.remove('hidden');
     },
