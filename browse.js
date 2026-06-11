@@ -46,34 +46,44 @@ function initApp() {
     // Check URL parameters for direct modal opening
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('create') === 'true') {
-        els.addExamModal.classList.remove('hidden');
+        window.requireAuth(() => {
+            els.addExamModal.classList.remove('hidden');
+        });
     }
 
     const examIdParam = urlParams.get('examId');
     if (examIdParam) {
-        document.getElementById('student-exam-id').value = examIdParam;
-        els.studentAuthSection.classList.remove('hidden');
-        els.studentModal.classList.remove('hidden');
-        isJoinExamMode = true;
+        window.requireAuth(() => {
+            document.getElementById('student-exam-id').value = examIdParam;
+            els.studentAuthSection.classList.remove('hidden');
+            els.studentModal.classList.remove('hidden');
+            isJoinExamMode = true;
+        });
     }
 
     els.btnJoinExam.addEventListener('click', () => {
-        els.studentAuthSection.classList.remove('hidden');
-        els.studentModal.classList.remove('hidden');
-        isJoinExamMode = true;
+        window.requireAuth(() => {
+            els.studentAuthSection.classList.remove('hidden');
+            els.studentModal.classList.remove('hidden');
+            isJoinExamMode = true;
+        });
     });
 
     els.btnAddNewExam.addEventListener('click', () => {
-        els.addExamModal.classList.remove('hidden');
+        window.requireAuth(() => {
+            els.addExamModal.classList.remove('hidden');
+        });
     });
     els.btnCloseAddExam.addEventListener('click', () => els.addExamModal.classList.add('hidden'));
 
     document.querySelector('.btn-start-exam').addEventListener('click', () => {
-        EXAM_CONFIG.googleAppsScriptUrl = "";
-        EXAM_CONFIG.isCustomExam = false;
-        EXAM_CONFIG.allowAddingQuestionsDuringExam = false; 
-        pendingExamIsBlank = false;
-        els.roleSelectionModal.classList.remove('hidden');
+        window.requireAuth(() => {
+            EXAM_CONFIG.googleAppsScriptUrl = "";
+            EXAM_CONFIG.isCustomExam = false;
+            EXAM_CONFIG.allowAddingQuestionsDuringExam = false; 
+            pendingExamIsBlank = false;
+            els.roleSelectionModal.classList.remove('hidden');
+        });
     });
 
     // Role Selection
