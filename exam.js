@@ -297,7 +297,33 @@ async function startExamSession(isBlank = false) {
 }
 
 function setupExam(data) {
-    questions = data.map((q, idx) => ({ ...q, globalIndex: idx }));
+    let normalizedData = data.map(q => {
+        let newQ = { ...q };
+        
+        // Map "unit" to "subject" if needed
+        if (!newQ.subject && newQ.unit) {
+            newQ.subject = newQ.unit;
+        }
+        
+        // Convert object options {a: '..', b: '..'} to array ['..', '..']
+        if (newQ.options && !Array.isArray(newQ.options) && typeof newQ.options === 'object') {
+            const keys = Object.keys(newQ.options).sort();
+            newQ.options = keys.map(k => newQ.options[k]);
+            
+            if (newQ.correctAnswer && typeof newQ.correctAnswer === 'string') {
+                newQ.correctOption = keys.indexOf(newQ.correctAnswer.toLowerCase());
+            }
+        }
+        
+        // Fallback for options if still not an array
+        if (!Array.isArray(newQ.options)) {
+            newQ.options = [];
+        }
+        
+        return newQ;
+    });
+
+    questions = normalizedData.map((q, idx) => ({ ...q, globalIndex: idx }));
     questions.forEach((q, idx) => {
         userResponses[idx] = { selectedOption: null, state: idx === 0 ? STATES.NOT_ANSWERED : STATES.NOT_VISITED };
     });

@@ -41,8 +41,11 @@ const els = {
 let pendingExamIsBlank = false;
 let manualQuestions = [];
 let isJoinExamMode = false;
+let editingExamId = null;
 
 function initApp() {
+    loadExamsFromSupabase();
+
     // Check URL parameters for direct modal opening
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('create') === 'true') {
@@ -71,22 +74,19 @@ function initApp() {
 
     els.btnAddNewExam.addEventListener('click', () => {
         window.requireAuth(() => {
+            editingExamId = null;
+            document.querySelector('#add-exam-modal .modal-header h3').textContent = 'Create Custom Exam';
+            els.btnSaveCustomExam.textContent = 'Upload Exam';
+            els.customExamTitle.value = '';
+            els.customExamTime.value = '';
+            els.customExamCode.value = '';
             els.addExamModal.classList.remove('hidden');
         });
     });
     els.btnCloseAddExam.addEventListener('click', () => els.addExamModal.classList.add('hidden'));
 
-    document.querySelector('.btn-start-exam').addEventListener('click', () => {
-        window.requireAuth(() => {
-            EXAM_CONFIG.googleAppsScriptUrl = "";
-            EXAM_CONFIG.isCustomExam = false;
-            EXAM_CONFIG.allowAddingQuestionsDuringExam = false; 
-            pendingExamIsBlank = false;
-            els.roleSelectionModal.classList.remove('hidden');
-        });
-    });
-
     // Role Selection
+
     els.btnCloseRoleSelection.addEventListener('click', () => els.roleSelectionModal.classList.add('hidden'));
     
     els.btnRoleStudent.addEventListener('click', () => {
@@ -212,20 +212,14 @@ function initApp() {
         document.querySelector('input[name="build-q-correct"][value="0"]').checked = true;
     });
 
-    els.btnSaveCustomExam.addEventListener('click', () => {
+    els.btnSaveCustomExam.addEventListener('click', async () => {
         const title = els.customExamTitle.value.trim();
         const code = els.customExamCode.value.trim();
         const timeVal = els.customExamTime.value.trim();
         
         if (!title) { alert("Please enter an Exam Title."); return; }
-        EXAM_CONFIG.examTitle = title;
-        if (timeVal && !isNaN(timeVal)) EXAM_CONFIG.totalTimeInMinutes = parseInt(timeVal);
-        else EXAM_CONFIG.totalTimeInMinutes = 180;
         
-        EXAM_CONFIG.googleAppsScriptUrl = "";
-        EXAM_CONFIG.isCustomExam = true;
-        EXAM_CONFIG.allowAddingQuestionsDuringExam = document.getElementById('custom-exam-allow-edit').checked;
-
+        let finalQuestions = [];
         // Auto-save any typed but un-added question
         if (els.buildQText.value.trim()) {
             els.btnAddManualQ.click(); 
@@ -238,19 +232,64 @@ function initApp() {
                 if (codeToEval.endsWith(';')) codeToEval = codeToEval.slice(0, -1);
                 let parsedData = new Function("return " + codeToEval)();
                 if (!Array.isArray(parsedData)) throw new Error("Data must be an array.");
-                localStorage.setItem('custom_questions', JSON.stringify(parsedData));
+                finalQuestions = parsedData;
             } catch (e) {
                 alert("Error parsing code: " + e.message); return;
             }
         } else if (manualQuestions.length > 0) {
-            localStorage.setItem('custom_questions', JSON.stringify(manualQuestions));
-        } else {
-            localStorage.removeItem('custom_questions');
+            finalQuestions = manualQuestions;
         }
-        
-        els.addExamModal.classList.add('hidden');
-        pendingExamIsBlank = !code && manualQuestions.length === 0;
-        els.roleSelectionModal.classList.remove('hidden');
+
+        els.btnSaveCustomExam.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        els.btnSaveCustomExam.disabled = true;
+
+        const duration = timeVal && !isNaN(timeVal) ? parseInt(timeVal) : 180;
+
+        try {
+            if (typeof supabase !== 'undefined' && supabase.from) {
+                let error;
+                if (editingExamId) {
+                    const result = await supabase.from('exams').update({
+                        duration: duration,
+                        title: title,
+                        questions: finalQuestions
+                    }).eq('id', editingExamId);
+                    error = result.error;
+                } else {
+                    const randomId = 'TEST-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+                    const result = await supabase.from('exams').insert([
+                        { 
+                            id: randomId, 
+                            password: '', 
+                            duration: duration, 
+                            marks_correct: 4, 
+                            marks_incorrect: -1,
+                            teacher_name: 'Community',
+                            title: title,
+                            questions: finalQuestions
+                        }
+                    ]);
+                    error = result.error;
+                }
+
+                if (error) {
+                    console.warn("Error saving to database: " + error.message);
+                    alert("Error saving exam.");
+                } else {
+                    alert(editingExamId ? "Exam updated successfully!" : "Exam uploaded successfully!");
+                    els.addExamModal.classList.add('hidden');
+                    loadExamsFromSupabase(); // refresh list
+                }
+            } else {
+                alert("Database connection not found.");
+            }
+        } catch (err) {
+            console.error("Exception during save:", err);
+            alert("Exception during save.");
+        } finally {
+            els.btnSaveCustomExam.innerHTML = editingExamId ? 'Save Changes' : 'Upload Exam';
+            els.btnSaveCustomExam.disabled = false;
+        }
     });
 
     els.btnCloseStudent.addEventListener('click', () => {
@@ -263,9 +302,10 @@ function initApp() {
         if (isJoinExamMode) {
             const idVal = document.getElementById('student-exam-id').value.trim();
             const passVal = document.getElementById('student-exam-pass').value.trim();
+            const isAuthHidden = els.studentAuthSection.classList.contains('hidden');
             
-            if (!idVal || !passVal) {
-                alert("Exam ID and Password are required to join.");
+            if (!idVal || (!passVal && !isAuthHidden)) {
+                alert("Exam ID and Password are required to join private exams.");
                 return;
             }
 
@@ -274,22 +314,30 @@ function initApp() {
 
             try {
                 if (typeof supabase !== 'undefined' && supabase.from) {
-                    const { data, error } = await supabase
-                        .from('exams')
-                        .select('*')
-                        .eq('id', idVal)
-                        .eq('password', passVal)
-                        .single();
+                    let query = supabase.from('exams').select('*').eq('id', idVal);
+                    if (passVal) {
+                        query = query.eq('password', passVal);
+                    }
+                    const { data, error } = await query.single();
                         
                     if (error || !data) {
-                        els.studentAuthError.classList.remove('hidden');
+                        if (els.studentAuthSection.classList.contains('hidden')) {
+                            alert("Error: Exam not found or could not be loaded.");
+                        } else {
+                            els.studentAuthError.classList.remove('hidden');
+                        }
                         return;
                     }
                     
                     EXAM_CONFIG.totalTimeInMinutes = data.duration;
                     EXAM_CONFIG.marksPerCorrect = data.marks_correct;
                     EXAM_CONFIG.marksPerIncorrect = data.marks_incorrect;
-                    EXAM_CONFIG.examTitle = "Exam: " + data.id;
+                    EXAM_CONFIG.examTitle = data.title || ("Exam: " + data.id);
+                    EXAM_CONFIG.isCustomExam = true;
+                    EXAM_CONFIG.googleAppsScriptUrl = "";
+                    if (data.questions && Array.isArray(data.questions)) {
+                        localStorage.setItem('custom_questions', JSON.stringify(data.questions));
+                    }
                 } else {
                     console.warn("Database not connected, bypassing remote verification.");
                 }
@@ -311,5 +359,105 @@ function initApp() {
         window.location.href = 'exam.html';
     });
 }
+
+async function loadExamsFromSupabase() {
+    const examList = document.getElementById('exam-list');
+    examList.innerHTML = '<p style="text-align:center; padding: 2rem;">Loading exams...</p>';
+    if (typeof supabase !== 'undefined' && supabase.from) {
+        const { data, error } = await supabase.from('exams').select('*').order('created_at', { ascending: false });
+        if (data && data.length > 0) {
+            examList.innerHTML = '';
+            data.forEach(exam => {
+                const card = document.createElement('div');
+                card.className = 'exam-card';
+                card.innerHTML = `
+                    <div class="exam-badges">
+                        <span class="badge-subject">${exam.teacher_name || 'Community'}</span>
+                        <span class="badge-time"><i class="fa-regular fa-clock"></i> ${exam.duration} min</span>
+                    </div>
+                    <h3 class="exam-card-title">${exam.title || 'Untitled Exam'}</h3>
+                    <p class="exam-card-desc">Exam ID: ${exam.id}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                        <button class="btn-text-primary btn-start-exam" onclick="joinExam('${exam.id}')" style="margin-top: 0;">Start exam <i class="fa-solid fa-arrow-right"></i></button>
+                        <div>
+                            <button class="btn-text" style="color: var(--text-main); padding: 0.5rem; margin-right: 0.5rem;" onclick="editExam('${exam.id}')" title="Edit Exam"><i class="fa-solid fa-pen"></i></button>
+                            <button class="btn-text" style="color: #ef4444; padding: 0.5rem;" onclick="removeExam('${exam.id}')" title="Remove Exam"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+                examList.appendChild(card);
+            });
+        } else {
+            examList.innerHTML = '<p style="text-align:center; padding: 2rem;">No exams found. Be the first to add one!</p>';
+        }
+    } else {
+        examList.innerHTML = '<p style="text-align:center; padding: 2rem; color: red;">Database not connected.</p>';
+    }
+}
+
+window.joinExam = function(examId) {
+    window.requireAuth(() => {
+        document.getElementById('student-exam-id').value = examId;
+        // Hide password section for community exams since they don't use it, 
+        // or just let it be empty if there's no password
+        document.getElementById('student-exam-pass').value = '';
+        els.studentAuthSection.classList.add('hidden'); // Hide it because it's a public exam
+        
+        // We need to fetch questions when they start, or we can fetch them now
+        // But the start button logic handles the fetch if isJoinExamMode is true!
+        // wait, join exam logic in btnConfirmStartExam fetches from supabase by id and password. 
+        // If password is '', it will match because we save password as ''
+        isJoinExamMode = true;
+        els.studentModal.classList.remove('hidden');
+    });
+};
+
+window.removeExam = async function(examId) {
+    window.requireAuth(async () => {
+        if (!confirm("Are you sure you want to delete this exam? This action cannot be undone.")) return;
+        
+        try {
+            if (typeof supabase !== 'undefined' && supabase.from) {
+                const { error } = await supabase.from('exams').delete().eq('id', examId);
+                if (error) {
+                    alert("Error deleting exam: " + error.message);
+                } else {
+                    alert("Exam removed successfully.");
+                    loadExamsFromSupabase(); // Refresh the list
+                }
+            }
+        } catch (err) {
+            console.error("Exception deleting exam:", err);
+            alert("Failed to delete exam.");
+        }
+    });
+};
+
+window.editExam = async function(examId) {
+    window.requireAuth(async () => {
+        try {
+            const { data, error } = await supabase.from('exams').select('*').eq('id', examId).single();
+            if (error) throw error;
+            
+            editingExamId = examId;
+            document.querySelector('#add-exam-modal .modal-header h3').textContent = 'Edit Custom Exam';
+            els.btnSaveCustomExam.textContent = 'Save Changes';
+            
+            els.customExamTitle.value = data.title || '';
+            els.customExamTime.value = data.duration || '';
+            
+            if (data.questions && data.questions.length > 0) {
+                els.customExamCode.value = JSON.stringify(data.questions, null, 2);
+            } else {
+                els.customExamCode.value = '';
+            }
+            
+            els.addExamModal.classList.remove('hidden');
+        } catch (err) {
+            console.error("Exception fetching exam details:", err);
+            alert("Failed to fetch exam details.");
+        }
+    });
+};
 
 window.addEventListener('DOMContentLoaded', initApp);
