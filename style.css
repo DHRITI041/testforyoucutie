@@ -1115,3 +1115,66 @@ input:checked + .slider:before {
     border-radius: 50%;
 }
 
+/* Exam Analysis Styles */
+.analysis-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-soft);
+    border-left: 6px solid var(--border);
+}
+.analysis-card.analysis-correct {
+    border-left-color: var(--success);
+}
+.analysis-card.analysis-incorrect {
+    border-left-color: var(--danger);
+}
+.analysis-card.analysis-unanswered {
+    border-left-color: var(--text-muted);
+}
+.analysis-q-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    color: var(--primary);
+}
+.analysis-q-status {
+    font-size: 1.5rem;
+}
+.analysis-q-text {
+    font-size: 1.15rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-main);
+    font-weight: 500;
+}
+.analysis-options-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.analysis-option {
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    font-size: 1rem;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.analysis-option.correct-option {
+    background: #d1fae5;
+    border-color: var(--success);
+    color: #065f46;
+    font-weight: 600;
+}
+.analysis-option.wrong-option {
+    background: #fee2e2;
+    border-color: var(--danger);
+    color: #991b1b;
+    font-weight: 600;
+}

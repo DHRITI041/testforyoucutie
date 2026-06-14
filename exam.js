@@ -493,6 +493,73 @@ document.getElementById('btn-acknowledge-warning')?.addEventListener('click', ()
     document.getElementById('cheat-warning-modal').classList.add('hidden');
 });
 
+document.getElementById('btn-analyze-exam')?.addEventListener('click', () => {
+    renderAnalysis();
+    switchView('analysis-container');
+});
+
+function renderAnalysis() {
+    const container = document.getElementById('analysis-content');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    questions.forEach((q, idx) => {
+        const response = userResponses[idx];
+        const userSelected = response.selectedOption;
+        const correctOpt = q.correctOption;
+        
+        let statusIcon = '<i class="fa-solid fa-minus" style="color: var(--text-muted);"></i>';
+        let statusClass = 'analysis-unanswered';
+        
+        if (userSelected !== null) {
+            if (userSelected === correctOpt) {
+                statusIcon = '<i class="fa-solid fa-check" style="color: var(--success);"></i>';
+                statusClass = 'analysis-correct';
+            } else {
+                statusIcon = '<i class="fa-solid fa-xmark" style="color: var(--danger);"></i>';
+                statusClass = 'analysis-incorrect';
+            }
+        }
+        
+        const qCard = document.createElement('div');
+        qCard.className = `analysis-card ${statusClass}`;
+        
+        let optionsHtml = '';
+        q.options.forEach((optText, optIdx) => {
+            let optClass = 'analysis-option';
+            let optIcon = '';
+            
+            if (optIdx === correctOpt) {
+                optClass += ' correct-option';
+                optIcon = '<i class="fa-solid fa-check"></i> ';
+            } else if (optIdx === userSelected && userSelected !== correctOpt) {
+                optClass += ' wrong-option';
+                optIcon = '<i class="fa-solid fa-xmark"></i> ';
+            }
+            
+            optionsHtml += `
+                <div class="${optClass}">
+                    ${optIcon}${optText}
+                </div>
+            `;
+        });
+        
+        qCard.innerHTML = `
+            <div class="analysis-q-header">
+                <span class="analysis-q-num">Q${idx + 1}.</span>
+                <span class="analysis-q-status">${statusIcon}</span>
+            </div>
+            <div class="analysis-q-text">${q.question}</div>
+            <div class="analysis-options-container">
+                ${optionsHtml}
+            </div>
+        `;
+        
+        container.appendChild(qCard);
+    });
+}
+
 function submitExam() {
     isExamActive = false;
     if (timerInterval) clearInterval(timerInterval);

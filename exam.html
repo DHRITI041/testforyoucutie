@@ -121,7 +121,23 @@
                 </div>
             </div>
 
-            <button onclick="window.location.href='index.html'" class="btn-primary mt-4">Go to Home</button>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button onclick="window.location.href='index.html'" class="btn-primary mt-4">Go to Home</button>
+                <button id="btn-analyze-exam" class="btn-secondary mt-4">Analyze Exam</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Container -->
+    <div id="analysis-container" class="view-container" style="flex-direction: column; overflow-y: auto; height: 100vh; padding: 2rem; background: var(--bg-body);">
+        <div style="max-width: 800px; margin: 0 auto; width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2 style="color: white;"><i class="fa-solid fa-magnifying-glass-chart"></i> Exam Analysis</h2>
+                <button onclick="switchView('result-container')" class="btn-secondary">Back to Results</button>
+            </div>
+            <div id="analysis-content" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <!-- Questions will be injected here -->
+            </div>
         </div>
     </div>
 
