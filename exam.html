@@ -224,9 +224,24 @@
         </div>
     </div>
 
+    <!-- Teacher Paused Modal -->
+    <div id="teacher-paused-modal" class="overlay hidden" style="z-index: 9999;">
+        <div class="modal-card" style="max-width: 400px; text-align: center;">
+            <div class="modal-body" style="padding-top: 1.5rem;">
+                <div style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;">
+                    <i class="fa-solid fa-pause"></i>
+                </div>
+                <h3 style="margin-bottom: 0.5rem; color: #f59e0b;">Exam Paused</h3>
+                <p style="color: var(--text-muted); font-size: 0.95rem;">Your teacher has paused this exam. Please wait for further instructions. You cannot interact with the exam at this moment.</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="questions.js"></script>
     <script src="config.js"></script>
+    <script src="supabase-config.js"></script>
     <script src="exam.js"></script>
 </body>
 </html>
