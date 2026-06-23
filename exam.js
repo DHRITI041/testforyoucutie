@@ -347,23 +347,29 @@ function setupExam(data) {
     subjects = ["All", ...Array.from(subjectSet)];
     renderSubjectTabs(); renderQuestionPalette();
     els.loading.classList.add('hidden');
-    isExamActive = true;
-    checkActivePenalty();
-    if (EXAM_CONFIG.showTimer) startTimer();
 
-    if (questions.length > 0) loadQuestion(0);
-    else {
-        els.qNum.textContent = "0"; els.qSubject.textContent = "None";
-        els.qText.textContent = "No questions added yet. Click 'Add Question' to start building this exam!";
-        els.optionsContainer.innerHTML = "";
-    }
+    const finishSetup = () => {
+        switchView('exam-container');
+        isExamActive = true;
+        checkActivePenalty();
+        if (EXAM_CONFIG.showTimer) startTimer();
 
-    const isBlank = localStorage.getItem('pending_exam_blank') === 'true';
-    if (!isBlank && !EXAM_CONFIG.allowAddingQuestionsDuringExam) {
-        els.btnOpenAdmin.style.display = 'none';
-    } else {
-        els.btnOpenAdmin.style.display = 'inline-block';
-    }
+        if (questions.length > 0) loadQuestion(0);
+        else {
+            els.qNum.textContent = "0"; els.qSubject.textContent = "None";
+            els.qText.textContent = "No questions added yet. Click 'Add Question' to start building this exam!";
+            els.optionsContainer.innerHTML = "";
+        }
+
+        const isBlank = localStorage.getItem('pending_exam_blank') === 'true';
+        if (!isBlank && !EXAM_CONFIG.allowAddingQuestionsDuringExam) {
+            els.btnOpenAdmin.style.display = 'none';
+        } else {
+            els.btnOpenAdmin.style.display = 'inline-block';
+        }
+    };
+
+    showAdvertisement(finishSetup);
 }
 
 function startTimer() {
@@ -580,24 +586,55 @@ function renderAnalysis() {
 function submitExam() {
     isExamActive = false;
     if (timerInterval) clearInterval(timerInterval);
-    switchView('result-container');
-    let attempted = 0; let correct = 0; let incorrect = 0;
-    questions.forEach((q, idx) => {
-        const response = userResponses[idx];
-        if (response.selectedOption !== null) {
-            attempted++;
-            if (response.selectedOption === q.correctOption) correct++; else incorrect++;
-        }
+    showAdvertisement(() => {
+        switchView('result-container');
+        let attempted = 0; let correct = 0; let incorrect = 0;
+        questions.forEach((q, idx) => {
+            const response = userResponses[idx];
+            if (response.selectedOption !== null) {
+                attempted++;
+                if (response.selectedOption === q.correctOption) correct++; else incorrect++;
+            }
+        });
+        const finalScore = (correct * EXAM_CONFIG.marksPerCorrect) + (incorrect * EXAM_CONFIG.marksPerIncorrect);
+        const maxScore = questions.length * EXAM_CONFIG.marksPerCorrect;
+        document.getElementById('final-score').textContent = finalScore;
+        document.getElementById('max-score').textContent = maxScore;
+        document.getElementById('stat-attempted').textContent = attempted;
+        document.getElementById('stat-correct').textContent = correct;
+        document.getElementById('stat-incorrect').textContent = incorrect;
     });
-    const finalScore = (correct * EXAM_CONFIG.marksPerCorrect) + (incorrect * EXAM_CONFIG.marksPerIncorrect);
-    const maxScore = questions.length * EXAM_CONFIG.marksPerCorrect;
-    document.getElementById('final-score').textContent = finalScore;
-    document.getElementById('max-score').textContent = maxScore;
-    document.getElementById('stat-attempted').textContent = attempted;
-    document.getElementById('stat-correct').textContent = correct;
-    document.getElementById('stat-incorrect').textContent = incorrect;
+}
 
+function showAdvertisement(onComplete) {
+    switchView('ad-container');
+    const btnSkip = document.getElementById('btn-skip-ad');
+    if (!btnSkip) {
+        onComplete();
+        return;
+    }
+    
+    btnSkip.disabled = true;
+    let secondsLeft = 5;
+    btnSkip.textContent = `Skip Ad (Wait ${secondsLeft}s)`;
+    
+    const adInterval = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft <= 0) {
+            clearInterval(adInterval);
+            btnSkip.disabled = false;
+            btnSkip.textContent = "Skip Ad";
+        } else {
+            btnSkip.textContent = `Skip Ad (Wait ${secondsLeft}s)`;
+        }
+    }, 1000);
 
+    btnSkip.onclick = () => {
+        if (!btnSkip.disabled) {
+            clearInterval(adInterval);
+            onComplete();
+        }
+    };
 }
 
 window.addEventListener('DOMContentLoaded', initExamApp);
