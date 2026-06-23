@@ -607,7 +607,7 @@ function submitExam() {
 }
 
 function showAdvertisement(onComplete) {
-    switchView('ad-container');
+    switchView('promo-container');
     const btnSkip = document.getElementById('btn-skip-ad');
     if (!btnSkip) {
         onComplete();
