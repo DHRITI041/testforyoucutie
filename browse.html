@@ -44,32 +44,6 @@
         </div>
     </div>
     
-    <!-- Live Monitor Container -->
-    <div id="monitor-container" class="view-container">
-        <div class="browse-content">
-            <div class="browse-header" style="margin-bottom: 1rem;">
-                <div>
-                    <button id="btn-back-to-browse" class="btn-text" style="padding-left: 0;"><i class="fa-solid fa-arrow-left"></i> Back to Exams</button>
-                    <h2 class="browse-title" style="margin-top: 0.5rem;">Live Monitor</h2>
-                    <p class="exam-card-desc">Exam ID: <span id="monitor-exam-id-display"></span></p>
-                </div>
-            </div>
-            
-            <div style="background: var(--bg-surface); padding: 1rem; border-radius: 0.5rem; border: 1px solid var(--border); margin-bottom: 2rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
-                    <div style="font-weight: 600; width: 25%;">Student</div>
-                    <div style="font-weight: 600; width: 15%; text-align: center;">Score</div>
-                    <div style="font-weight: 600; width: 15%; text-align: center;">Warnings</div>
-                    <div style="font-weight: 600; width: 15%; text-align: center;">Status</div>
-                    <div style="font-weight: 600; width: 30%; text-align: right;">Actions</div>
-                </div>
-                <div id="monitor-students-list">
-                    <p style="text-align:center; padding: 2rem; color: var(--text-muted);">Waiting for students to join...</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Add Custom Exam Modal -->
     <div id="add-exam-modal" class="overlay hidden">
         <div class="modal-card">
@@ -291,29 +265,6 @@
                 <div style="display: flex; gap: 1rem;">
                     <button id="btn-cancel-delete" class="btn-outline" style="flex: 1;">Cancel</button>
                     <button id="btn-confirm-delete" class="btn-primary" style="flex: 1; background: #ef4444; color: white; border: none;">Delete</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Monitor Auth Modal -->
-    <div id="monitor-auth-modal" class="overlay hidden">
-        <div class="modal-card" style="max-width: 400px; text-align: center;">
-            <div class="modal-header" style="justify-content: center; border-bottom: none; padding-bottom: 0;">
-                <div style="width: 50px; height: 50px; border-radius: 50%; background: #e0f2fe; color: #0ea5e9; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem;">
-                    <i class="fa-solid fa-lock"></i>
-                </div>
-            </div>
-            <div class="modal-body">
-                <h3 style="margin-bottom: 0.5rem; color: var(--text-main);">Private Exam</h3>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Please enter the exam password to access the live monitor.</p>
-                <div class="form-group" style="text-align: left;">
-                    <input type="password" id="monitor-auth-password" class="form-control" placeholder="Exam Password">
-                </div>
-                <div id="monitor-auth-error" class="hidden" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; text-align: left;"><i class="fa-solid fa-circle-exclamation"></i> Incorrect password.</div>
-                <div style="display: flex; gap: 1rem;">
-                    <button id="btn-cancel-monitor-auth" class="btn-outline" style="flex: 1;">Cancel</button>
-                    <button id="btn-confirm-monitor-auth" class="btn-primary" style="flex: 1;">Access</button>
                 </div>
             </div>
         </div>

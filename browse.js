@@ -44,18 +44,7 @@ const els = {
     deleteConfirmModal: document.getElementById('delete-confirm-modal'),
     btnCancelDelete: document.getElementById('btn-cancel-delete'),
     btnConfirmDelete: document.getElementById('btn-confirm-delete'),
-
-    btnBackToBrowse: document.getElementById('btn-back-to-browse'),
-    monitorContainer: document.getElementById('monitor-container'),
-    browseContainer: document.getElementById('browse-container'),
-    monitorExamIdDisplay: document.getElementById('monitor-exam-id-display'),
-    monitorStudentsList: document.getElementById('monitor-students-list'),
-
-    monitorAuthModal: document.getElementById('monitor-auth-modal'),
-    monitorAuthPassword: document.getElementById('monitor-auth-password'),
-    monitorAuthError: document.getElementById('monitor-auth-error'),
-    btnCancelMonitorAuth: document.getElementById('btn-cancel-monitor-auth'),
-    btnConfirmMonitorAuth: document.getElementById('btn-confirm-monitor-auth')
+    browseContainer: document.getElementById('browse-container')
 };
 
 let pendingExamIdForRole = null;
@@ -64,10 +53,7 @@ let manualQuestions = [];
 let isJoinExamMode = false;
 let editingExamId = null;
 let examToDelete = null;
-let currentMonitorSubscription = null;
-let monitoredStudents = {};
-let pendingMonitorExamId = null;
-let pendingMonitorExamPassword = null;
+
 
 function initApp() {
     loadExamsFromSupabase();
@@ -439,32 +425,6 @@ function initApp() {
         window.location.href = 'exam.html';
     });
 
-    els.btnBackToBrowse?.addEventListener('click', () => {
-        if (currentMonitorSubscription) {
-            currentMonitorSubscription.unsubscribe();
-            currentMonitorSubscription = null;
-        }
-        els.monitorContainer.classList.remove('active-view');
-        els.browseContainer.classList.add('active-view');
-    });
-
-    els.btnCancelMonitorAuth?.addEventListener('click', () => {
-        els.monitorAuthModal.classList.add('hidden');
-        pendingMonitorExamId = null;
-        pendingMonitorExamPassword = null;
-    });
-
-    els.btnConfirmMonitorAuth?.addEventListener('click', () => {
-        const enteredPassword = els.monitorAuthPassword.value.trim();
-        if (enteredPassword === pendingMonitorExamPassword) {
-            els.monitorAuthModal.classList.add('hidden');
-            startMonitoring(pendingMonitorExamId);
-            pendingMonitorExamId = null;
-            pendingMonitorExamPassword = null;
-        } else {
-            els.monitorAuthError.classList.remove('hidden');
-        }
-    });
 
     els.btnCancelDelete?.addEventListener('click', () => {
         els.deleteConfirmModal.classList.add('hidden');
@@ -521,7 +481,6 @@ async function loadExamsFromSupabase() {
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
                         <div>
                             <button class="btn-text-primary btn-start-exam" onclick="joinExam('${exam.id}')" style="margin-top: 0;">Start exam <i class="fa-solid fa-arrow-right"></i></button>
-                            <button class="btn-text-primary" onclick="openMonitor('${exam.id}')" style="margin-top: 0; margin-left: 0.5rem;"><i class="fa-solid fa-desktop"></i> Live Monitor</button>
                         </div>
                         <div>
                             <button class="btn-text" style="color: var(--text-main); padding: 0.5rem; margin-right: 0.5rem;" onclick="editExam('${exam.id}')" title="Edit Exam"><i class="fa-solid fa-pen"></i></button>
@@ -581,127 +540,6 @@ window.editExam = async function(examId) {
             alert("Failed to fetch exam details.");
         }
     });
-};
-
-window.openMonitor = async function(examId) {
-    window.requireAuth(async () => {
-        try {
-            const { data, error } = await supabase.from('exams').select('password').eq('id', examId).single();
-            if (error) throw error;
-
-            if (data.password && data.password.trim() !== '') {
-                pendingMonitorExamId = examId;
-                pendingMonitorExamPassword = data.password;
-                els.monitorAuthPassword.value = '';
-                els.monitorAuthError.classList.add('hidden');
-                els.monitorAuthModal.classList.remove('hidden');
-            } else {
-                startMonitoring(examId);
-            }
-        } catch (err) {
-            console.error("Exception fetching exam for monitor:", err);
-            alert("Failed to fetch exam details.");
-        }
-    });
-};
-
-async function startMonitoring(examId) {
-    els.monitorExamIdDisplay.textContent = examId;
-    els.browseContainer.classList.remove('active-view');
-    els.monitorContainer.classList.add('active-view');
-    els.monitorStudentsList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted);">Loading live sessions...</p>';
-    monitoredStudents = {};
-
-    if (typeof supabase !== 'undefined' && supabase.from) {
-        // Load initial state
-        const { data, error } = await supabase.from('exam_sessions').select('*').eq('exam_id', examId);
-        if (error) {
-            els.monitorStudentsList.innerHTML = `<p style="text-align:center; padding: 2rem; color: red;">Error: ${error.message}</p>`;
-            return;
-        }
-
-        data.forEach(session => {
-            monitoredStudents[session.id] = session;
-        });
-        renderMonitorList();
-
-        // Subscribe to realtime changes
-        currentMonitorSubscription = supabase.channel('exam_sessions_channel')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'exam_sessions', filter: `exam_id=eq.${examId}` }, payload => {
-                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                    monitoredStudents[payload.new.id] = payload.new;
-                } else if (payload.eventType === 'DELETE') {
-                    delete monitoredStudents[payload.old.id];
-                }
-                renderMonitorList();
-            })
-            .subscribe();
-    }
-}
-
-function renderMonitorList() {
-    els.monitorStudentsList.innerHTML = '';
-    const sessions = Object.values(monitoredStudents);
-    
-    if (sessions.length === 0) {
-        els.monitorStudentsList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted);">No students have joined yet.</p>';
-        return;
-    }
-
-    // Sort by most recently pinged
-    sessions.sort((a, b) => new Date(b.last_ping) - new Date(a.last_ping));
-
-    sessions.forEach(session => {
-        const row = document.createElement('div');
-        row.style.display = 'flex';
-        row.style.justifyContent = 'space-between';
-        row.style.alignItems = 'center';
-        row.style.padding = '0.75rem 0';
-        row.style.borderBottom = '1px solid var(--border)';
-        
-        let statusColor = 'var(--success)';
-        if (session.status === 'paused') statusColor = 'var(--warning)';
-        else if (session.status === 'submitted') statusColor = 'var(--text-muted)';
-        
-        row.innerHTML = `
-            <div style="width: 25%;">
-                <div style="font-weight: 600;">${session.student_name}</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Roll: ${session.student_roll}</div>
-            </div>
-            <div style="width: 15%; text-align: center; font-weight: bold;">${session.score}</div>
-            <div style="width: 15%; text-align: center;">
-                <span style="background: ${session.warnings > 0 ? '#fee2e2' : 'var(--bg-main)'}; color: ${session.warnings > 0 ? '#ef4444' : 'var(--text-main)'}; padding: 0.2rem 0.5rem; border-radius: 1rem; font-size: 0.9rem;">
-                    ${session.warnings}
-                </span>
-            </div>
-            <div style="width: 15%; text-align: center;">
-                <span style="color: ${statusColor}; font-size: 0.9rem; font-weight: 500; text-transform: capitalize;">
-                    <i class="fa-solid fa-circle" style="font-size: 0.5rem; vertical-align: middle;"></i> ${session.status}
-                </span>
-            </div>
-            <div style="width: 30%; text-align: right; display: flex; justify-content: flex-end; gap: 0.5rem;">
-                <button class="btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" onclick="updateStudentSession('${session.id}', {warnings: ${Math.max(0, session.warnings - 1)}})" title="Decrease Warning">-1</button>
-                <button class="btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" onclick="updateStudentSession('${session.id}', {warnings: ${session.warnings + 1}})" title="Increase Warning">+1</button>
-                <button class="btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;" onclick="updateStudentSession('${session.id}', {status: '${session.status === 'paused' ? 'active' : 'paused'}'})" title="${session.status === 'paused' ? 'Resume' : 'Pause'}">
-                    <i class="fa-solid ${session.status === 'paused' ? 'fa-play' : 'fa-pause'}"></i>
-                </button>
-                <button class="btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-color: #ef4444; color: #ef4444;" onclick="updateStudentSession('${session.id}', {status: 'submitted'})" title="Force Submit">
-                    <i class="fa-solid fa-check-double"></i>
-                </button>
-            </div>
-        `;
-        els.monitorStudentsList.appendChild(row);
-    });
-}
-
-window.updateStudentSession = async function(sessionId, updates) {
-    if (typeof supabase !== 'undefined' && supabase.from) {
-        const { error } = await supabase.from('exam_sessions').update(updates).eq('id', sessionId);
-        if (error) {
-            console.error("Failed to update student session:", error);
-            alert("Failed to update student session.");
-        }
-    }
 };
 
 window.addEventListener('DOMContentLoaded', initApp);

@@ -7,9 +7,7 @@ let userResponses = {};
 let subjects = [];
 let currentSubject = "All";
 let isExamActive = false;
-let studentSessionId = null;
-let studentSyncInterval = null;
-let studentRealtimeSubscription = null;
+
 let studentExamId = null;
 let studentDetailsObj = null;
 
@@ -352,9 +350,7 @@ function setupExam(data) {
     isExamActive = true;
     checkActivePenalty();
     if (EXAM_CONFIG.showTimer) startTimer();
-    if (studentExamId && typeof supabase !== 'undefined' && supabase.from) {
-        startStudentSync();
-    }
+
     if (questions.length > 0) loadQuestion(0);
     else {
         els.qNum.textContent = "0"; els.qSubject.textContent = "None";
@@ -579,97 +575,7 @@ function renderAnalysis() {
     });
 }
 
-async function startStudentSync() {
-    if (!studentExamId) return;
-    
-    try {
-        const { data, error } = await supabase.from('exam_sessions').insert([{
-            exam_id: studentExamId,
-            student_name: studentDetailsObj.name,
-            student_roll: studentDetailsObj.roll,
-            score: 0,
-            warnings: cheatWarningsCount,
-            status: 'active',
-            answers: {}
-        }]).select();
 
-        if (data && data.length > 0) {
-            studentSessionId = data[0].id;
-            
-            // Subscribe to realtime updates from teacher
-            studentRealtimeSubscription = supabase.channel('student_channel_' + studentSessionId)
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'exam_sessions', filter: `id=eq.${studentSessionId}` }, payload => {
-                    handleTeacherCommand(payload.new);
-                })
-                .subscribe();
-
-            // Periodic sync
-            studentSyncInterval = setInterval(syncStudentData, 5000);
-        }
-    } catch (err) {
-        console.error("Error starting sync:", err);
-    }
-}
-
-function handleTeacherCommand(session) {
-    if (session.status === 'paused') {
-        document.getElementById('teacher-paused-modal').classList.remove('hidden');
-    } else if (session.status === 'active') {
-        document.getElementById('teacher-paused-modal').classList.add('hidden');
-    } else if (session.status === 'submitted' && isExamActive) {
-        alert("Your teacher has forcefully submitted your exam.");
-        submitExam();
-    }
-
-    if (session.warnings !== cheatWarningsCount) {
-        cheatWarningsCount = session.warnings;
-        localStorage.setItem('cheatWarningsCount', cheatWarningsCount);
-        const countSpan = document.getElementById('cheat-warning-count');
-        if (countSpan) countSpan.textContent = cheatWarningsCount;
-
-        if (cheatWarningsCount >= 9) {
-            document.getElementById('cheat-warning-modal').classList.add('hidden');
-            alert("Your exam was automatically submitted due to excessive rule violations.");
-            submitExam();
-            if (studentDetailsObj && studentDetailsObj.isPublic) {
-                cheatWarningsCount = 0;
-                localStorage.setItem('cheatWarningsCount', 0);
-                localStorage.removeItem('penaltyEndTime');
-            }
-        } else if (cheatWarningsCount >= 3) {
-            const penaltyMinutes = (cheatWarningsCount - 2) * 5;
-            const penaltySeconds = penaltyMinutes * 60;
-            const penaltyEndTime = Date.now() + (penaltySeconds * 1000);
-            localStorage.setItem('penaltyEndTime', penaltyEndTime);
-            showPenaltyModal(penaltySeconds);
-        }
-    }
-}
-
-async function syncStudentData() {
-    if (!studentSessionId || typeof supabase === 'undefined' || !supabase.from) return;
-    
-    // Calculate current score based on responses
-    let tempCorrect = 0;
-    let tempIncorrect = 0;
-    let currentAnswers = {};
-    questions.forEach((q, idx) => {
-        const response = userResponses[idx];
-        if (response.selectedOption !== null) {
-            currentAnswers[idx] = response.selectedOption;
-            if (response.selectedOption === q.correctOption) tempCorrect++; 
-            else tempIncorrect++;
-        }
-    });
-    const currentScore = (tempCorrect * EXAM_CONFIG.marksPerCorrect) + (tempIncorrect * EXAM_CONFIG.marksPerIncorrect);
-
-    await supabase.from('exam_sessions').update({
-        score: currentScore,
-        warnings: cheatWarningsCount,
-        answers: currentAnswers,
-        last_ping: new Date().toISOString()
-    }).eq('id', studentSessionId);
-}
 
 function submitExam() {
     isExamActive = false;
@@ -691,13 +597,7 @@ function submitExam() {
     document.getElementById('stat-correct').textContent = correct;
     document.getElementById('stat-incorrect').textContent = incorrect;
 
-    if (studentSessionId && typeof supabase !== 'undefined' && supabase.from) {
-        syncStudentData().then(() => {
-            supabase.from('exam_sessions').update({ status: 'submitted' }).eq('id', studentSessionId);
-        });
-        if (studentSyncInterval) clearInterval(studentSyncInterval);
-        if (studentRealtimeSubscription) studentRealtimeSubscription.unsubscribe();
-    }
+
 }
 
 window.addEventListener('DOMContentLoaded', initExamApp);
